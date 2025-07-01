@@ -1,43 +1,15 @@
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  getDoc, 
-  updateDoc, 
-  query, 
-  where, 
-  orderBy,
-  limit,
-  deleteDoc 
-} from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { User, VerificationRequest } from '../types';
+import { ref, get, update, remove } from 'firebase/database';
 
 export class UserService {
-  static async getUsers(_page: number = 1, pageSize: number = 20): Promise<{ users: User[], total: number }> {
+  static async getUsers(): Promise<{ users: User[], total: number }> {
     try {
-      const usersRef = collection(db, 'users');
-      const q = query(
-        usersRef,
-        orderBy('createdAt', 'desc'),
-        limit(pageSize)
-      );
-      
-      const snapshot = await getDocs(q);
-      const users: User[] = [];
-      
-      snapshot.forEach((doc) => {
-        users.push({
-          id: doc.id,
-          ...doc.data()
-        } as User);
-      });
-      
-      // Get total count (simplified - in production you might want to use a counter)
-      const totalSnapshot = await getDocs(usersRef);
-      const total = totalSnapshot.size;
-      
-      return { users, total };
+      const usersRef = ref(db, 'users');
+      const snapshot = await get(usersRef);
+      const usersObj = snapshot.exists() ? snapshot.val() : {};
+      const users: User[] = Object.entries(usersObj).map(([id, data]) => ({ id, ...(data as any) }));
+      return { users, total: users.length };
     } catch (error) {
       throw error;
     }
@@ -45,9 +17,10 @@ export class UserService {
 
   static async getUserById(userId: string): Promise<User | null> {
     try {
-      const userDoc = await getDoc(doc(db, 'users', userId));
-      if (userDoc.exists()) {
-        return { id: userDoc.id, ...userDoc.data() } as User;
+      const userRef = ref(db, `users/${userId}`);
+      const snapshot = await get(userRef);
+      if (snapshot.exists()) {
+        return { id: userId, ...snapshot.val() } as User;
       }
       return null;
     } catch (error) {
@@ -57,10 +30,10 @@ export class UserService {
 
   static async updateUserVerification(userId: string, isVerified: boolean, status: 'approved' | 'rejected'): Promise<void> {
     try {
-      await updateDoc(doc(db, 'users', userId), {
+      await update(ref(db, `users/${userId}`), {
         isVerified,
         verificationStatus: status,
-        updatedAt: new Date()
+        updatedAt: new Date().toISOString()
       });
     } catch (error) {
       throw error;
@@ -69,9 +42,9 @@ export class UserService {
 
   static async updateUserRole(userId: string, role: 'admin' | 'moderator' | 'user'): Promise<void> {
     try {
-      await updateDoc(doc(db, 'users', userId), {
+      await update(ref(db, `users/${userId}`), {
         role,
-        updatedAt: new Date()
+        updatedAt: new Date().toISOString()
       });
     } catch (error) {
       throw error;
@@ -80,7 +53,7 @@ export class UserService {
 
   static async deleteUser(userId: string): Promise<void> {
     try {
-      await deleteDoc(doc(db, 'users', userId));
+      await remove(ref(db, `users/${userId}`));
     } catch (error) {
       throw error;
     }
@@ -88,23 +61,10 @@ export class UserService {
 
   static async getVerificationRequests(): Promise<VerificationRequest[]> {
     try {
-      const requestsRef = collection(db, 'verificationRequests');
-      const q = query(
-        requestsRef,
-        where('status', '==', 'pending'),
-        orderBy('submittedAt', 'desc')
-      );
-      
-      const snapshot = await getDocs(q);
-      const requests: VerificationRequest[] = [];
-      
-      snapshot.forEach((doc) => {
-        requests.push({
-          id: doc.id,
-          ...doc.data()
-        } as VerificationRequest);
-      });
-      
+      const requestsRef = ref(db, 'verificationRequests');
+      const snapshot = await get(requestsRef);
+      const requestsObj = snapshot.exists() ? snapshot.val() : {};
+      const requests: VerificationRequest[] = Object.entries(requestsObj).map(([id, data]) => ({ id, ...(data as any) }));
       return requests;
     } catch (error) {
       throw error;
@@ -113,24 +73,16 @@ export class UserService {
 
   static async approveVerification(requestId: string, adminId: string, notes?: string): Promise<void> {
     try {
-      const requestRef = doc(db, 'verificationRequests', requestId);
-      const requestDoc = await getDoc(requestRef);
-      
-      if (!requestDoc.exists()) {
-        throw new Error('Verification request not found');
-      }
-      
-      const request = requestDoc.data() as VerificationRequest;
-      
-      // Update verification request
-      await updateDoc(requestRef, {
+      const requestRef = ref(db, `verificationRequests/${requestId}`);
+      const requestSnap = await get(requestRef);
+      if (!requestSnap.exists()) throw new Error('Verification request not found');
+      const request = requestSnap.val() as VerificationRequest;
+      await update(requestRef, {
         status: 'approved',
-        reviewedAt: new Date(),
+        reviewedAt: new Date().toISOString(),
         reviewedBy: adminId,
         notes
       });
-      
-      // Update user verification status
       await this.updateUserVerification(request.userId, true, 'approved');
     } catch (error) {
       throw error;
@@ -139,24 +91,16 @@ export class UserService {
 
   static async rejectVerification(requestId: string, adminId: string, notes?: string): Promise<void> {
     try {
-      const requestRef = doc(db, 'verificationRequests', requestId);
-      const requestDoc = await getDoc(requestRef);
-      
-      if (!requestDoc.exists()) {
-        throw new Error('Verification request not found');
-      }
-      
-      const request = requestDoc.data() as VerificationRequest;
-      
-      // Update verification request
-      await updateDoc(requestRef, {
+      const requestRef = ref(db, `verificationRequests/${requestId}`);
+      const requestSnap = await get(requestRef);
+      if (!requestSnap.exists()) throw new Error('Verification request not found');
+      const request = requestSnap.val() as VerificationRequest;
+      await update(requestRef, {
         status: 'rejected',
-        reviewedAt: new Date(),
+        reviewedAt: new Date().toISOString(),
         reviewedBy: adminId,
         notes
       });
-      
-      // Update user verification status
       await this.updateUserVerification(request.userId, false, 'rejected');
     } catch (error) {
       throw error;
@@ -165,24 +109,12 @@ export class UserService {
 
   static async searchUsers(searchTerm: string): Promise<User[]> {
     try {
-      const usersRef = collection(db, 'users');
-      const q = query(
-        usersRef,
-        where('displayName', '>=', searchTerm),
-        where('displayName', '<=', searchTerm + '\uf8ff'),
-        limit(20)
-      );
-      
-      const snapshot = await getDocs(q);
-      const users: User[] = [];
-      
-      snapshot.forEach((doc) => {
-        users.push({
-          id: doc.id,
-          ...doc.data()
-        } as User);
-      });
-      
+      const usersRef = ref(db, 'users');
+      const snapshot = await get(usersRef);
+      const usersObj = snapshot.exists() ? snapshot.val() : {};
+      const users: User[] = Object.entries(usersObj)
+        .map(([id, data]) => ({ id, ...(data as any) }))
+        .filter(user => user.displayName && user.displayName.toLowerCase().includes(searchTerm.toLowerCase()));
       return users;
     } catch (error) {
       throw error;

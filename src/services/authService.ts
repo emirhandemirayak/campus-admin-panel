@@ -4,7 +4,7 @@ import {
   onAuthStateChanged,
   type User as FirebaseUser 
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { ref, get } from 'firebase/database';
 import { auth, db } from '../firebase/config';
 import type { AdminUser } from '../types';
 
@@ -14,13 +14,14 @@ export class AuthService {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
-      // Check if user is admin
-      const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-      if (!adminDoc.exists()) {
+      // Check if user is admin using Realtime Database
+      const adminRef = ref(db, `admins/${user.uid}`);
+      const adminSnap = await get(adminRef);
+      if (!adminSnap.exists()) {
         throw new Error('Access denied. Admin privileges required.');
       }
       
-      return adminDoc.data() as AdminUser;
+      return adminSnap.val() as AdminUser;
     } catch (error) {
       throw error;
     }
@@ -38,9 +39,10 @@ export class AuthService {
     return onAuthStateChanged(auth, async (firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
         try {
-          const adminDoc = await getDoc(doc(db, 'admins', firebaseUser.uid));
-          if (adminDoc.exists()) {
-            callback(adminDoc.data() as AdminUser);
+          const adminRef = ref(db, `admins/${firebaseUser.uid}`);
+          const adminSnap = await get(adminRef);
+          if (adminSnap.exists()) {
+            callback(adminSnap.val() as AdminUser);
           } else {
             callback(null);
           }
@@ -58,9 +60,10 @@ export class AuthService {
     if (!user) return null;
     
     try {
-      const adminDoc = await getDoc(doc(db, 'admins', user.uid));
-      if (adminDoc.exists()) {
-        return adminDoc.data() as AdminUser;
+      const adminRef = ref(db, `admins/${user.uid}`);
+      const adminSnap = await get(adminRef);
+      if (adminSnap.exists()) {
+        return adminSnap.val() as AdminUser;
       }
       return null;
     } catch (error) {

@@ -52,6 +52,7 @@ export interface DashboardStats {
   totalContent: number;
   flaggedContent: number;
   activeUsers: number;
+  pendingEvents: number;
 }
 
 export interface AdminUser {
