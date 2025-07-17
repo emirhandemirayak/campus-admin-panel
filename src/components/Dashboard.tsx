@@ -7,7 +7,8 @@ import {
   Paper,
   LinearProgress,
   Button,
-  Alert
+  Alert,
+  Divider
 } from '@mui/material';
 import {
   People as PeopleIcon,
@@ -19,6 +20,7 @@ import {
   Assignment as VerificationIcon,
   Event as EventIcon
 } from '@mui/icons-material';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import type { DashboardStats } from '../types';
 
 interface DashboardProps {
@@ -47,6 +49,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ stats, onNavigateToVerific
     <Card sx={{ 
       height: '100%',
       transition: 'all 0.3s ease-in-out',
+      borderRadius: 3,
+      boxShadow: 2,
       '&:hover': {
         transform: 'translateY(-4px)',
         boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04)',
@@ -91,17 +95,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ stats, onNavigateToVerific
         p: 4, 
         height: '100%',
         background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-        border: '1px solid rgb(226 232 240)'
+        border: '1px solid rgb(226 232 240)',
+        borderRadius: 3
       }}>
         <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: 'text.primary' }}>
-          Verification Progress
+          Doğrulama İlerlemesi
         </Typography>
         <Box display="flex" alignItems="center" mb={3}>
           <Typography variant="h2" component="div" sx={{ mr: 2, fontWeight: 700, color: 'primary.main' }}>
             {loading ? '...' : Math.round(progress)}%
           </Typography>
           <Typography variant="body1" color="textSecondary" sx={{ fontWeight: 500 }}>
-            verified
+            doğrulandı
           </Typography>
         </Box>
         <LinearProgress 
@@ -123,7 +128,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ stats, onNavigateToVerific
               {loading ? '...' : stats.verifiedUsers}
             </Typography>
             <Typography variant="body2" color="textSecondary">
-              Verified
+              Doğrulandı
             </Typography>
           </Box>
           <Box textAlign="center">
@@ -131,7 +136,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ stats, onNavigateToVerific
               {loading ? '...' : stats.totalUsers - stats.verifiedUsers}
             </Typography>
             <Typography variant="body2" color="textSecondary">
-              Pending
+              Bekliyor
             </Typography>
           </Box>
         </Box>
@@ -140,144 +145,169 @@ export const Dashboard: React.FC<DashboardProps> = ({ stats, onNavigateToVerific
   };
 
   return (
-    <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, color: 'text.primary' }}>
-          Dashboard Overview
+    <Box sx={{ width: '100%', maxWidth: 1200, mx: 'auto', p: { xs: 2, sm: 4 } }}>
+      <Box sx={{ mb: { xs: 3, sm: 5 } }}>
+        <Typography variant="h3" gutterBottom sx={{ fontWeight: 800, color: 'text.primary', fontSize: { xs: 24, sm: 36 } }}>
+          Yönetim Paneli
         </Typography>
-        <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-          Welcome back! Here's what's happening with your campus platform today.
+        <Typography variant="body1" sx={{ color: 'text.secondary', fontSize: { xs: 15, sm: 18 } }}>
+          Hoş geldiniz! Bugün kampüs platformunuzda neler oluyor?
         </Typography>
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 3 }}>
+        <Alert severity="error" sx={{ mb: 3, fontSize: { xs: 15, sm: 17 } }}>
           {error}
         </Alert>
       )}
-      
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 3 }}>
-        <StatCard
-          title="Total Users"
-          value={stats.totalUsers}
-          icon={PeopleIcon}
-          color="primary"
-          subtitle="Registered users"
-          loading={loading}
-        />
-        
-        <StatCard
-          title="Verified Users"
-          value={stats.verifiedUsers}
-          icon={VerifiedIcon}
-          color="success"
-          subtitle="Approved accounts"
-          loading={loading}
-        />
-        
-        <StatCard
-          title="Pending Verifications"
-          value={stats.pendingVerifications}
-          icon={PendingIcon}
-          color="warning"
-          subtitle="Awaiting review"
-          loading={loading}
-        />
-        
-        <StatCard
-          title="Active Users"
-          value={stats.activeUsers}
-          icon={TrendingIcon}
-          color="secondary"
-          subtitle="This month"
-          loading={loading}
-        />
-        
-        <StatCard
-          title="Total Content"
-          value={stats.totalContent}
-          icon={ArticleIcon}
-          color="primary"
-          subtitle="Posts & comments"
-          loading={loading}
-        />
-        
-        <StatCard
-          title="Flagged Content"
-          value={stats.flaggedContent}
-          icon={FlagIcon}
-          color="error"
-          subtitle="Needs review"
-          loading={loading}
-        />
-        
-        <StatCard
-          title="Pending Events"
-          value={stats.pendingEvents}
-          icon={EventIcon}
-          color="warning"
-          subtitle="Awaiting approval"
-          loading={loading}
-        />
+
+      {/* Stat Cards Section */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 3 },
+          mb: { xs: 3, sm: 5 },
+        }}
+      >
+        <Box sx={{ flex: 1, minWidth: 280 }}>
+          <StatCard
+            title="Toplam Kullanıcı"
+            value={stats.totalUsers}
+            icon={PeopleIcon}
+            color="primary"
+            subtitle="Kayıtlı kullanıcılar"
+            loading={loading}
+          />
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 280 }}>
+          <StatCard
+            title="Doğrulanmış Kullanıcı"
+            value={stats.verifiedUsers}
+            icon={VerifiedIcon}
+            color="success"
+            subtitle="Onaylı hesaplar"
+            loading={loading}
+          />
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 280 }}>
+          <StatCard
+            title="Bekleyen Doğrulama"
+            value={stats.pendingVerifications}
+            icon={PendingIcon}
+            color="warning"
+            subtitle="İnceleniyor"
+            loading={loading}
+          />
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 280 }}>
+          <StatCard
+            title="Aktif Kullanıcı"
+            value={stats.activeUsers}
+            icon={TrendingIcon}
+            color="secondary"
+            subtitle="Bu ay"
+            loading={loading}
+          />
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 280 }}>
+          <StatCard
+            title="Toplam İçerik"
+            value={stats.totalContent}
+            icon={ArticleIcon}
+            color="primary"
+            subtitle="Gönderi & yorum"
+            loading={loading}
+          />
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 280 }}>
+          <StatCard
+            title="İşaretli İçerik"
+            value={stats.flaggedContent}
+            icon={FlagIcon}
+            color="error"
+            subtitle="İncelenmesi gereken"
+            loading={loading}
+          />
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 280 }}>
+          <StatCard
+            title="Bekleyen Etkinlik"
+            value={stats.pendingEvents}
+            icon={EventIcon}
+            color="warning"
+            subtitle="Onay bekliyor"
+            loading={loading}
+          />
+        </Box>
       </Box>
-      
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 3, mt: 3 }}>
-        <VerificationProgress />
-        
-        <Paper sx={{ 
-          p: 4, 
-          height: '100%',
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-          border: '1px solid rgb(226 232 240)'
-        }}>
-          <Typography variant="h6" gutterBottom sx={{ fontWeight: 600, color: 'text.primary' }}>
-            Quick Actions
-          </Typography>
-          <Box display="flex" flexDirection="column" gap={3}>
+
+      <Divider sx={{ my: { xs: 3, sm: 5 } }} />
+
+      {/* Progress & Actions Section */}
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          gap: { xs: 3, md: 4 },
+          alignItems: 'stretch',
+        }}
+      >
+        <Box sx={{ flex: 2, minWidth: 0 }}>
+          <VerificationProgress />
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Paper
+            sx={{
+              p: { xs: 2, sm: 4 },
+              height: '100%',
+              background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+              border: '1px solid rgb(226 232 240)',
+              borderRadius: 3,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minHeight: 180,
+            }}
+          >
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 700, color: 'text.primary', fontSize: { xs: 16, sm: 20 } }}>
+              Hızlı İşlemler
+            </Typography>
             <Button
               variant="contained"
               color="warning"
               startIcon={<VerificationIcon />}
               onClick={onNavigateToVerifications}
               fullWidth
-              sx={{ 
+              sx={{
                 py: 1.5,
                 background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)',
+                borderRadius: 2,
+                fontWeight: 700,
+                fontSize: { xs: 15, sm: 17 },
+                minHeight: 48,
+                mt: 2,
                 '&:hover': {
                   background: 'linear-gradient(135deg, #d97706 0%, #f59e0b 100%)',
-                }
+                },
               }}
+              aria-label="Doğrulama Taleplerine Git"
             >
-              Review {stats.pendingVerifications} Verification Requests
+              Doğrulama Taleplerini Görüntüle
             </Button>
-            <Button
-              variant="outlined"
-              color="error"
-              fullWidth
-              sx={{ py: 1.5 }}
-            >
-              Moderate {stats.flaggedContent} Flagged Content
-            </Button>
-            <Button
-              variant="outlined"
-              color="primary"
-              fullWidth
-              sx={{ py: 1.5 }}
-            >
-              View All Users
-            </Button>
-            <Button
-              variant="outlined"
-              color="warning"
-              startIcon={<EventIcon />}
-              fullWidth
-              sx={{ py: 1.5 }}
-            >
-              Review {stats.pendingEvents} Pending Events
-            </Button>
-          </Box>
-        </Paper>
+          </Paper>
+        </Box>
       </Box>
+      {/* Empty state example (if needed) */}
+      {/*
+      {stats.totalUsers === 0 && !loading && (
+        <Box display="flex" flexDirection="column" alignItems="center" color="text.secondary" py={6}>
+          <InfoOutlinedIcon fontSize="large" sx={{ mb: 1 }} />
+          <Typography mt={4}>Henüz kullanıcı yok.</Typography>
+        </Box>
+      )}
+      */}
     </Box>
   );
 }; 

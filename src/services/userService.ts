@@ -28,12 +28,14 @@ export class UserService {
     }
   }
 
-  static async updateUserVerification(userId: string, isVerified: boolean, status: 'approved' | 'rejected'): Promise<void> {
+  static async updateUserVerification(userId: string,adminId: string, isVerified: boolean, status: 'approved' | 'rejected'): Promise<void> {
     try {
       await update(ref(db, `users/${userId}`), {
         isVerified,
         verificationStatus: status,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        updatedBy: adminId,
+        
       });
     } catch (error) {
       throw error;
@@ -83,7 +85,7 @@ export class UserService {
         reviewedBy: adminId,
         notes
       });
-      await this.updateUserVerification(request.userId, true, 'approved');
+      await this.updateUserVerification(request.userId,adminId, true, 'approved');
     } catch (error) {
       throw error;
     }
@@ -101,7 +103,7 @@ export class UserService {
         reviewedBy: adminId,
         notes
       });
-      await this.updateUserVerification(request.userId, false, 'rejected');
+      await this.updateUserVerification(request.userId,adminId, false, 'rejected');
     } catch (error) {
       throw error;
     }

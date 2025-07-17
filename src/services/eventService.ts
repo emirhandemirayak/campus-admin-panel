@@ -1,26 +1,6 @@
 import { ref, get, update, remove } from 'firebase/database';
 import { db } from '../firebase/config';
-
-export interface Event {
-  eventId: string;
-  title: string;
-  description: string;
-  date: string;
-  time: string;
-  location: string;
-  formattedAddress: string;
-  latitude: number;
-  longitude: number;
-  category: string;
-  imageUrl: string;
-  organizerId: string;
-  organizerName: string;
-  organizerImage: string;
-  timestamp: string;
-  status?: 'pending' | 'approved' | 'rejected' | 'flagged';
-  moderationNotes?: string;
-  attendees?: Record<string, boolean>;
-}
+import type { Event } from '../types';
 
 export class EventService {
   static async getAllEvents(): Promise<Event[]> {
@@ -50,5 +30,15 @@ export class EventService {
   static async deleteEvent(eventId: string): Promise<void> {
     const eventRef = ref(db, `events/${eventId}`);
     await remove(eventRef);
+  }
+
+  static async createEvent(event: Event): Promise<void> {
+    const eventRef = ref(db, `events/${event.eventId}`);
+    await update(eventRef, event);
+  }
+
+  static async updateEvent(eventId: string, updatedEvent: Event): Promise<void> {
+    const eventRef = ref(db, `events/${eventId}`);
+    await update(eventRef, updatedEvent);
   }
 } 

@@ -70,4 +70,19 @@ export class AuthService {
       return null;
     }
   }
+
+  static async getAdminUserInfo(): Promise<any | null> {
+    const user = auth.currentUser;
+    if (!user) return null;
+    try {
+      const userInfoRef = ref(db, `user_info/${user.uid}`);
+      const userInfoSnap = await get(userInfoRef);
+      if (userInfoSnap.exists()) {
+        return userInfoSnap.val();
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
 } 

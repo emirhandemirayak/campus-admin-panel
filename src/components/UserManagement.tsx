@@ -38,7 +38,7 @@ import {
   Person as PersonIcon,
   Email as EmailIcon,
   School as SchoolIcon,
-
+  InfoOutlined as InfoOutlinedIcon,
   Clear as ClearIcon
 } from '@mui/icons-material';
 import { UserManagementService, type UserInfo, type UserFilters, type UserStats } from '../services/userManagementService';
@@ -87,7 +87,7 @@ export const UserManagement: React.FC = () => {
       setDepartments(deptList);
       setYears(yearList);
     } catch (err) {
-      setError('Failed to load users');
+      setError('Kullanıcılar yüklenemedi');
       console.error(err);
     } finally {
       setLoading(false);
@@ -99,7 +99,7 @@ export const UserManagement: React.FC = () => {
       const filtered = await UserManagementService.filterUsers(filters);
       setFilteredUsers(filtered);
     } catch (err) {
-      setError('Failed to apply filters');
+      setError('Filtreler uygulanamadı');
       console.error(err);
     }
   };
@@ -122,10 +122,10 @@ export const UserManagement: React.FC = () => {
     try {
       setProcessing(uid);
       await UserManagementService.updateUserVerification(uid, true, 'approved');
-      setSuccess('User approved successfully');
+      setSuccess('Kullanıcı başarıyla onaylandı');
       await loadUsers(); // Reload to get updated data
     } catch (err) {
-      setError('Failed to approve user');
+      setError('Kullanıcı onaylanamadı');
       console.error(err);
     } finally {
       setProcessing(null);
@@ -136,10 +136,10 @@ export const UserManagement: React.FC = () => {
     try {
       setProcessing(uid);
       await UserManagementService.updateUserVerification(uid, false, 'rejected');
-      setSuccess('User rejected successfully');
+      setSuccess('Kullanıcı başarıyla reddedildi');
       await loadUsers(); // Reload to get updated data
     } catch (err) {
-      setError('Failed to reject user');
+      setError('Kullanıcı reddedilemedi');
       console.error(err);
     } finally {
       setProcessing(null);
@@ -159,14 +159,14 @@ export const UserManagement: React.FC = () => {
   };
 
   const getVerificationStatusText = (status?: string, isVerified?: boolean) => {
-    if (isVerified) return 'Verified';
-    if (status === 'rejected') return 'Rejected';
-    if (status === 'pending') return 'Pending';
-    return 'Not Verified';
+    if (isVerified) return 'Doğrulandı';
+    if (status === 'rejected') return 'Reddedildi';
+    if (status === 'pending') return 'Beklemede';
+    return 'Doğrulanmadı';
   };
 
   const formatDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return 'Yok';
     return new Date(dateString).toLocaleDateString();
   };
 
@@ -179,109 +179,72 @@ export const UserManagement: React.FC = () => {
   }
 
   return (
-    <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" gutterBottom sx={{ fontWeight: 700, color: 'text.primary' }}>
-          User Management
+    <Box sx={{ width: '100%', maxWidth: 1200, mx: 'auto', p: { xs: 2, sm: 4 } }}>
+      <Box sx={{ mb: { xs: 3, sm: 5 } }}>
+        <Typography variant="h3" gutterBottom sx={{ fontWeight: 800, color: 'text.primary', fontSize: { xs: 24, sm: 36 } }}>
+          Kullanıcı Yönetimi
         </Typography>
-        <Typography variant="body1" sx={{ color: 'text.secondary' }}>
-          Manage and monitor all users in your campus platform.
+        <Typography variant="body1" sx={{ color: 'text.secondary', fontSize: { xs: 15, sm: 18 } }}>
+          Kampüs platformunuzdaki tüm kullanıcıları yönetin ve izleyin.
         </Typography>
       </Box>
 
       {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+        <Alert severity="error" sx={{ mb: 2, fontSize: { xs: 15, sm: 17 } }} onClose={() => setError(null)}>
           {error}
         </Alert>
       )}
 
       {success && (
-        <Alert severity="success" sx={{ mb: 2 }} onClose={() => setSuccess(null)}>
+        <Alert severity="success" sx={{ mb: 2, fontSize: { xs: 15, sm: 17 } }} onClose={() => setSuccess(null)}>
           {success}
         </Alert>
       )}
 
-            {/* Stats Cards */}
+      {/* Stats Cards */}
       {stats && (
-        <Box sx={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', 
-          gap: 3, 
-          mb: 4 
+        <Box sx={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 3 },
+          mb: { xs: 3, sm: 5 },
         }}>
-          <Card sx={{ 
-            transition: 'all 0.3s ease-in-out',
-            '&:hover': {
-              transform: 'translateY(-4px)',
-              boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04)',
-            }
-          }}>
-            <CardContent sx={{ p: 3 }}>
-              <Typography color="textSecondary" gutterBottom sx={{ fontWeight: 600 }}>
-                Total Users
-              </Typography>
-              <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary' }}>
-                {stats.totalUsers}
-              </Typography>
-            </CardContent>
-          </Card>
-          <Card sx={{ 
-            transition: 'all 0.3s ease-in-out',
-            '&:hover': {
-              transform: 'translateY(-4px)',
-              boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04)',
-            }
-          }}>
-            <CardContent sx={{ p: 3 }}>
-              <Typography color="textSecondary" gutterBottom sx={{ fontWeight: 600 }}>
-                Verified Users
-              </Typography>
-              <Typography variant="h3" sx={{ fontWeight: 700, color: 'success.main' }}>
-                {stats.verifiedUsers}
-              </Typography>
-            </CardContent>
-          </Card>
-          <Card sx={{ 
-            transition: 'all 0.3s ease-in-out',
-            '&:hover': {
-              transform: 'translateY(-4px)',
-              boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04)',
-            }
-          }}>
-            <CardContent sx={{ p: 3 }}>
-              <Typography color="textSecondary" gutterBottom sx={{ fontWeight: 600 }}>
-                Pending Users
-              </Typography>
-              <Typography variant="h3" sx={{ fontWeight: 700, color: 'warning.main' }}>
-                {stats.pendingUsers}
-              </Typography>
-            </CardContent>
-          </Card>
-          <Card sx={{ 
-            transition: 'all 0.3s ease-in-out',
-            '&:hover': {
-              transform: 'translateY(-4px)',
-              boxShadow: '0 10px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04)',
-            }
-          }}>
-            <CardContent sx={{ p: 3 }}>
-              <Typography color="textSecondary" gutterBottom sx={{ fontWeight: 600 }}>
-                Active Users (1h)
-              </Typography>
-              <Typography variant="h3" sx={{ fontWeight: 700, color: 'primary.main' }}>
-                {stats.activeUsers}
-              </Typography>
-            </CardContent>
-          </Card>
+          <Box sx={{ flex: 1, minWidth: 240 }}>
+            <Card sx={{ transition: 'all 0.3s', borderRadius: 3, boxShadow: 2, '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 } }}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography color="textSecondary" gutterBottom sx={{ fontWeight: 600 }}>
+                  Toplam Kullanıcı
+                </Typography>
+                <Typography variant="h3" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                  {stats.totalUsers}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
+          <Box sx={{ flex: 1, minWidth: 240 }}>
+            <Card sx={{ transition: 'all 0.3s', borderRadius: 3, boxShadow: 2, '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 } }}>
+              <CardContent sx={{ p: 3 }}>
+                <Typography color="textSecondary" gutterBottom sx={{ fontWeight: 600 }}>
+                  Doğrulanmış Kullanıcı
+                </Typography>
+                <Typography variant="h3" sx={{ fontWeight: 700, color: 'success.main' }}>
+                  {stats.verifiedUsers}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Box>
         </Box>
       )}
+
+      <Divider sx={{ my: { xs: 3, sm: 5 } }} />
 
       {/* Search and Filters */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Box display="flex" alignItems="center" gap={2} mb={2}>
             <TextField
-              placeholder="Search users..."
+              placeholder="Kullanıcıları ara..."
               value={filters.searchTerm}
               onChange={(e) => handleFilterChange('searchTerm', e.target.value)}
               InputProps={{
@@ -293,21 +256,47 @@ export const UserManagement: React.FC = () => {
               variant="outlined"
               startIcon={<FilterIcon />}
               onClick={() => setShowFilters(!showFilters)}
+              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
             >
-              Filters
+              Filtreler
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<FilterIcon />}
+              onClick={() => setShowFilters(!showFilters)}
+              sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
+            >
+              Filtre
             </Button>
             <Button
               variant="outlined"
               startIcon={<ClearIcon />}
               onClick={clearFilters}
+              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
             >
-              Clear
+              Temizle
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<ClearIcon />}
+              onClick={clearFilters}
+              sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
+            >
+              Temizle
             </Button>
             <Button
               variant="contained"
               onClick={applyFilters}
+              sx={{ display: { xs: 'none', sm: 'inline-flex' } }}
             >
-              Apply
+              Uygula
+            </Button>
+            <Button
+              variant="contained"
+              onClick={applyFilters}
+              sx={{ display: { xs: 'inline-flex', sm: 'none' } }}
+            >
+              Uygula
             </Button>
           </Box>
 
@@ -320,39 +309,39 @@ export const UserManagement: React.FC = () => {
                 gap: 2 
               }}>
                 <FormControl fullWidth>
-                  <InputLabel>Verification Status</InputLabel>
+                  <InputLabel>Doğrulama Durumu</InputLabel>
                   <Select
                     value={filters.verificationStatus}
                     onChange={(e) => handleFilterChange('verificationStatus', e.target.value)}
-                    label="Verification Status"
+                    label="Doğrulama Durumu"
                   >
-                    <MenuItem value="all">All</MenuItem>
-                    <MenuItem value="pending">Pending</MenuItem>
-                    <MenuItem value="approved">Approved</MenuItem>
-                    <MenuItem value="rejected">Rejected</MenuItem>
+                    <MenuItem value="all">Tümü</MenuItem>
+                    <MenuItem value="pending">Beklemede</MenuItem>
+                    <MenuItem value="approved">Onaylandı</MenuItem>
+                    <MenuItem value="rejected">Reddedildi</MenuItem>
                   </Select>
                 </FormControl>
                 <FormControl fullWidth>
-                  <InputLabel>Department</InputLabel>
+                  <InputLabel>Bölüm</InputLabel>
                   <Select
                     value={filters.department}
                     onChange={(e) => handleFilterChange('department', e.target.value)}
-                    label="Department"
+                    label="Bölüm"
                   >
-                    <MenuItem value="">All Departments</MenuItem>
+                    <MenuItem value="">Tüm Bölümler</MenuItem>
                     {departments.map(dept => (
                       <MenuItem key={dept} value={dept}>{dept}</MenuItem>
                     ))}
                   </Select>
                 </FormControl>
                 <FormControl fullWidth>
-                  <InputLabel>Year</InputLabel>
+                  <InputLabel>Yıl</InputLabel>
                   <Select
                     value={filters.year || ''}
                     onChange={(e) => handleFilterChange('year', e.target.value || undefined)}
-                    label="Year"
+                    label="Yıl"
                   >
-                    <MenuItem value="">All Years</MenuItem>
+                    <MenuItem value="">Tüm Yıllar</MenuItem>
                     {years.map(year => (
                       <MenuItem key={year} value={year}>{year}</MenuItem>
                     ))}
@@ -365,119 +354,126 @@ export const UserManagement: React.FC = () => {
       </Card>
 
       {/* Users Table */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>User</TableCell>
-              <TableCell>Email</TableCell>
-              <TableCell>Major</TableCell>
-              <TableCell>Verification Status</TableCell>
-              <TableCell>Activity</TableCell>
-              <TableCell>Platform</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredUsers.map((user) => (
-              <TableRow key={user.uid}>
-                <TableCell>
-                  <Box display="flex" alignItems="center" gap={2}>
-                    <Avatar src={user.profileImageUrl}>
-                      <PersonIcon />
-                    </Avatar>
-                    <Box>
-                      <Typography variant="body2" fontWeight="bold">
-                        {user.name || 'Unknown'}
-                      </Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        {user.uid}
-                      </Typography>
-                    </Box>
-                  </Box>
+      <Box sx={{ width: '100%', overflowX: 'auto', mb: 4 }}>
+        <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, minWidth: 800 }}>
+          <Table aria-label="Kullanıcı Tablosu">
+            <TableHead>
+              <TableRow sx={{ background: '#f5f6fa' }}>
+                <TableCell sx={{ fontWeight: 700 }}>Ad Soyad</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>E-posta</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>Bölüm</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>
+                  <Tooltip title="Kullanıcı doğrulama durumu">
+                    <span>Doğrulama</span>
+                  </Tooltip>
                 </TableCell>
-                <TableCell>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <EmailIcon fontSize="small" color="action" />
-                    {user.email || 'N/A'}
-                  </Box>
+                <TableCell sx={{ fontWeight: 700 }}>
+                  <Tooltip title="Kullanıcı aktiflik durumu (son 1 saat)">
+                    <span>Aktiflik</span>
+                  </Tooltip>
                 </TableCell>
-                <TableCell>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <SchoolIcon fontSize="small" color="action" />
-                    {user.major || 'N/A'}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={getVerificationStatusText(user.verificationStatus, user.isVerifiedStudent)}
-                    color={getVerificationStatusColor(user.verificationStatus, user.isVerifiedStudent) as any}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <Chip
-                      label={user.isActive ? 'Active' : 'Inactive'}
-                      color={user.isActive ? 'success' : 'default'}
-                      size="small"
-                    />
-                    {user.lastActivity && (
-                      <Typography variant="caption" color="textSecondary">
-                        {formatDate(user.lastActivity)}
-                      </Typography>
-                    )}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={user.platform || 'Unknown'}
-                    variant="outlined"
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  <Box display="flex" gap={1}>
-                    <Tooltip title="View Details">
-                      <IconButton
-                        size="small"
-                        onClick={() => handleViewUser(user)}
-                      >
-                        <ViewIcon />
-                      </IconButton>
-                    </Tooltip>
-                    
-                    {!user.isVerifiedStudent && (
-                      <>
-                        <Tooltip title="Approve User">
-                          <IconButton
-                            size="small"
-                            color="success"
-                            onClick={() => handleApproveUser(user.uid)}
-                            disabled={processing === user.uid}
-                          >
-                            <ApproveIcon />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Reject User">
-                          <IconButton
-                            size="small"
-                            color="error"
-                            onClick={() => handleRejectUser(user.uid)}
-                            disabled={processing === user.uid}
-                          >
-                            <RejectIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </>
-                    )}
-                  </Box>
-                </TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>İşlemler</TableCell>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {filteredUsers.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} align="center" color="text.secondary">
+                    <Box display="flex" flexDirection="column" alignItems="center" py={4}>
+                      <InfoOutlinedIcon fontSize="large" sx={{ mb: 1 }} />
+                      <Typography>Kullanıcı bulunamadı.</Typography>
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredUsers.map(user => (
+                  <TableRow key={user.uid} hover sx={{ transition: 'background 0.2s', py: 1.5 }}>
+                    <TableCell>
+                      <Box display="flex" alignItems="center" gap={2}>
+                        <Avatar src={user.profileImageUrl}>
+                          <PersonIcon />
+                        </Avatar>
+                        <Box>
+                          <Typography variant="body2" fontWeight="bold">
+                            {user.name || 'Bilinmiyor'}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {user.uid}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <EmailIcon fontSize="small" color="action" />
+                        {user.email || 'Yok'}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <SchoolIcon fontSize="small" color="action" />
+                        {user.department || 'Bilinmiyor'}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={getVerificationStatusText(user.verificationStatus, user.isVerifiedStudent)}
+                        color={getVerificationStatusColor(user.verificationStatus, user.isVerifiedStudent) as any}
+                        size="small"
+                        sx={{ fontWeight: 600 }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={user.isActive ? 'Aktif' : 'Pasif'}
+                        color={user.isActive ? 'success' : 'default'}
+                        size="small"
+                        sx={{ fontWeight: 600 }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Box display="flex" gap={1}>
+                        <Tooltip title="Detayları Görüntüle">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleViewUser(user)}
+                          >
+                            <ViewIcon />
+                          </IconButton>
+                        </Tooltip>
+                        {!user.isVerifiedStudent && (
+                          <>
+                            <Tooltip title="Kullanıcıyı Onayla">
+                              <IconButton
+                                size="small"
+                                color="success"
+                                onClick={() => handleApproveUser(user.uid)}
+                                disabled={processing === user.uid}
+                              >
+                                <ApproveIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Kullanıcıyı Reddet">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleRejectUser(user.uid)}
+                                disabled={processing === user.uid}
+                              >
+                                <RejectIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </>
+                        )}
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Box>
 
       {/* User Detail Dialog */}
       <Dialog
@@ -487,7 +483,7 @@ export const UserManagement: React.FC = () => {
         fullWidth
       >
         <DialogTitle>
-          User Details
+          Kullanıcı Detayları
           {selectedUser && (
             <Typography variant="body2" color="textSecondary">
               {selectedUser.name} ({selectedUser.email})
@@ -502,65 +498,65 @@ export const UserManagement: React.FC = () => {
               gap: 3 
             }}>
               <Box display="flex" flexDirection="column" gap={2}>
-                <Typography variant="h6">Profile Information</Typography>
+                <Typography variant="h6">Profil Bilgileri</Typography>
                 <Box>
-                  <Typography variant="body2" color="textSecondary">Name</Typography>
-                  <Typography variant="body1">{selectedUser.name || 'N/A'}</Typography>
+                  <Typography variant="body2" color="textSecondary">Ad</Typography>
+                  <Typography variant="body1">{selectedUser.name || 'Bilinmiyor'}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="body2" color="textSecondary">Email</Typography>
-                  <Typography variant="body1">{selectedUser.email || 'N/A'}</Typography>
+                  <Typography variant="body2" color="textSecondary">E-posta</Typography>
+                  <Typography variant="body1">{selectedUser.email || 'Yok'}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="body2" color="textSecondary">Major</Typography>
-                  <Typography variant="body1">{selectedUser.major || 'N/A'}</Typography>
+                  <Typography variant="body2" color="textSecondary">Bölüm</Typography>
+                  <Typography variant="body1">{selectedUser.major || 'Bilinmiyor'}</Typography>
                 </Box>
                 <Box>
-                  <Typography variant="body2" color="textSecondary">Gender</Typography>
-                  <Typography variant="body1">{selectedUser.gender || 'N/A'}</Typography>
+                  <Typography variant="body2" color="textSecondary">Cinsiyet</Typography>
+                  <Typography variant="body1">{selectedUser.gender || 'Bilinmiyor'}</Typography>
                 </Box>
                                   <Box>
-                    <Typography variant="body2" color="textSecondary">Date of Birth</Typography>
+                    <Typography variant="body2" color="textSecondary">Doğum Tarihi</Typography>
                     <Typography variant="body1">{formatDate(selectedUser.dateOfBirth)}</Typography>
                   </Box>
                   <Box>
-                    <Typography variant="body2" color="textSecondary">Last Activity</Typography>
+                    <Typography variant="body2" color="textSecondary">Son Aktivite</Typography>
                     <Typography variant="body1">
-                      {selectedUser.lastActivity ? formatDate(selectedUser.lastActivity) : 'Never'}
+                      {selectedUser.lastActivity ? formatDate(selectedUser.lastActivity) : 'Hiç'}
                     </Typography>
                   </Box>
                   <Box>
                     <Typography variant="body2" color="textSecondary">Platform</Typography>
-                    <Typography variant="body1">{selectedUser.platform || 'Unknown'}</Typography>
+                    <Typography variant="body1">{selectedUser.platform || 'Bilinmiyor'}</Typography>
                   </Box>
               </Box>
               <Box display="flex" flexDirection="column" gap={2}>
-                <Typography variant="h6">Account Status</Typography>
+                <Typography variant="h6">Hesap Durumu</Typography>
                 <Box>
-                  <Typography variant="body2" color="textSecondary">Verification Status</Typography>
+                  <Typography variant="body2" color="textSecondary">Doğrulama Durumu</Typography>
                   <Chip
                     label={getVerificationStatusText(selectedUser.verificationStatus, selectedUser.isVerifiedStudent)}
                     color={getVerificationStatusColor(selectedUser.verificationStatus, selectedUser.isVerifiedStudent) as any}
                   />
                 </Box>
                                   <Box>
-                    <Typography variant="body2" color="textSecondary">About</Typography>
-                    <Typography variant="body1">{selectedUser.about || 'No bio provided'}</Typography>
+                    <Typography variant="body2" color="textSecondary">Hakkında</Typography>
+                    <Typography variant="body1">{selectedUser.about || 'Hakkında bilgi yok'}</Typography>
                   </Box>
                   <Box>
-                    <Typography variant="body2" color="textSecondary">Activity Status</Typography>
+                    <Typography variant="body2" color="textSecondary">Aktivite Durumu</Typography>
                     <Chip
-                      label={selectedUser.isActive ? 'Active' : 'Inactive'}
+                      label={selectedUser.isActive ? 'Aktif' : 'Pasif'}
                       color={selectedUser.isActive ? 'success' : 'default'}
                       size="small"
                     />
                   </Box>
                 {selectedUser.profileImageUrl && (
                   <Box>
-                    <Typography variant="body2" color="textSecondary">Profile Image</Typography>
+                    <Typography variant="body2" color="textSecondary">Profil Resmi</Typography>
                     <img
                       src={selectedUser.profileImageUrl}
-                      alt="Profile"
+                      alt="Profil"
                       style={{ width: 100, height: 100, borderRadius: 8, objectFit: 'cover' }}
                     />
                   </Box>
@@ -571,7 +567,7 @@ export const UserManagement: React.FC = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setUserDetailDialog(false)}>
-            Close
+            Kapat
           </Button>
         </DialogActions>
       </Dialog>

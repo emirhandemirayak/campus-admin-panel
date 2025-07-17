@@ -14,7 +14,8 @@ import {
   ThemeProvider,
   createTheme,
   Divider,
-  Chip
+  Chip,
+  Avatar
 } from '@mui/material';
 import {
   Dashboard as DashboardIcon,
@@ -24,7 +25,8 @@ import {
   Settings as SettingsIcon,
   Logout as LogoutIcon,
   Menu as MenuIcon,
-  Event as EventIcon
+  Event as EventIcon,
+  School as SchoolIcon
 } from '@mui/icons-material';
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
@@ -34,6 +36,7 @@ import { EventModeration } from './components/EventModeration';
 import { AuthService } from './services/authService';
 import { DashboardService } from './services/dashboardService';
 import type { AdminUser, DashboardStats } from './types';
+import ClubAdminPanel from './components/ClubAdminPanel';
 
 const drawerWidth = 240;
 
@@ -118,6 +121,7 @@ const theme = createTheme({
 
 function App() {
   const [admin, setAdmin] = useState<AdminUser | null>(null);
+  const [adminInfo, setAdminInfo] = useState<any | null>(null);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [mobileOpen, setMobileOpen] = useState(false);
   const [stats, setStats] = useState<DashboardStats>({
@@ -172,6 +176,13 @@ function App() {
     // Check if user is already logged in
     const unsubscribe = AuthService.onAuthStateChange((user) => {
       setAdmin(user);
+      if (user) {
+        AuthService.getAdminUserInfo().then((info) => {
+          setAdminInfo(info);
+        });
+      } else {
+        setAdminInfo(null);
+      }
     });
 
     return unsubscribe;
@@ -195,39 +206,45 @@ function App() {
   };
 
   const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, page: 'dashboard' },
-    { text: 'User Management', icon: <PeopleIcon />, page: 'users' },
-    { text: 'Event Moderation', icon: <EventIcon />, page: 'events' },
-    { text: 'Content Moderation', icon: <ArticleIcon />, page: 'content' },
-    { text: 'Verifications', icon: <VerifiedIcon />, page: 'verifications' },
-    { text: 'Settings', icon: <SettingsIcon />, page: 'settings' },
+    { text: 'Panel', icon: <DashboardIcon />, page: 'dashboard' },
+    { text: 'Kullanıcılar', icon: <PeopleIcon />, page: 'users' },
+    { text: 'Etkinlikler', icon: <EventIcon />, page: 'events' },
+    { text: 'İçerik Moderasyonu', icon: <ArticleIcon />, page: 'content' },
+    { text: 'Doğrulamalar', icon: <VerifiedIcon />, page: 'verifications' },
+    { text: 'Ayarlar', icon: <SettingsIcon />, page: 'settings' },
+    { text: 'Kulüp Yönetimi', icon: <SchoolIcon />, page: 'club' },
   ];
 
   const drawer = (
-    <Box sx={{ height: '100%', backgroundColor: 'background.paper' }}>
-      <Box sx={{ 
-        p: 3, 
+    <Box sx={{ height: '100%', backgroundColor: 'background.paper', display: 'flex', flexDirection: 'column' }}>
+      <Box sx={{
+        p: 3,
         borderBottom: '1px solid rgb(226 232 240)',
-        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)'
+        background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 2
       }}>
-        <Typography variant="h5" sx={{ color: 'white', fontWeight: 700, mb: 0.5 }}>
-          Campus Admin
-        </Typography>
-        <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
-          Management Portal
-        </Typography>
+        <Avatar src="/favicon.ico" alt="Campus Admin" sx={{ width: 40, height: 40, bgcolor: 'white' }} />
+        <Box>
+          <Typography variant="h5" sx={{ color: 'white', fontWeight: 700, mb: 0.5 }}>
+            Campus Admin
+          </Typography>
+          <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.8)' }}>
+            Yönetim Portalı
+          </Typography>
+        </Box>
       </Box>
-      
-      <Box sx={{ p: 2 }}>
+      <Box sx={{ p: 2, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
         <List sx={{ pt: 0 }}>
           {menuItems.map((item) => (
-            <ListItem 
+            <ListItem
               key={item.text}
               onClick={() => {
                 setCurrentPage(item.page);
                 setMobileOpen(false);
               }}
-              sx={{ 
+              sx={{
                 cursor: 'pointer',
                 borderRadius: 2,
                 mb: 1,
@@ -236,18 +253,21 @@ function App() {
                 '&:hover': {
                   backgroundColor: currentPage === item.page ? 'primary.dark' : 'action.hover',
                 },
-                transition: 'all 0.2s ease-in-out'
+                transition: 'all 0.2s ease-in-out',
+                minHeight: 48,
+                px: 2
               }}
+              aria-label={item.text}
             >
-              <ListItemIcon sx={{ 
+              <ListItemIcon sx={{
                 color: currentPage === item.page ? 'white' : 'text.secondary',
                 minWidth: 40
               }}>
                 {item.icon}
               </ListItemIcon>
-              <ListItemText 
-                primary={item.text} 
-                sx={{ 
+              <ListItemText
+                primary={item.text}
+                sx={{
                   '& .MuiListItemText-primary': {
                     fontWeight: currentPage === item.page ? 600 : 500
                   }
@@ -256,13 +276,12 @@ function App() {
             </ListItem>
           ))}
         </List>
-        
+        <Box sx={{ flexGrow: 1 }} />
         <Divider sx={{ my: 2 }} />
-        
-        <List>
-          <ListItem 
-            onClick={handleLogout} 
-            sx={{ 
+        <List sx={{ pb: 2 }}>
+          <ListItem
+            onClick={handleLogout}
+            sx={{
               cursor: 'pointer',
               borderRadius: 2,
               color: 'error.main',
@@ -270,13 +289,16 @@ function App() {
                 backgroundColor: 'error.light',
                 color: 'white'
               },
-              transition: 'all 0.2s ease-in-out'
+              transition: 'all 0.2s ease-in-out',
+              minHeight: 48,
+              px: 2
             }}
+            aria-label="Çıkış Yap"
           >
             <ListItemIcon sx={{ color: 'inherit', minWidth: 40 }}>
               <LogoutIcon />
             </ListItemIcon>
-            <ListItemText primary="Logout" />
+            <ListItemText primary="Çıkış Yap" />
           </ListItem>
         </List>
       </Box>
@@ -306,6 +328,8 @@ function App() {
         return <VerificationRequests />;
       case 'settings':
         return <div>Settings - Coming Soon</div>;
+      case 'club':
+        return <ClubAdminPanel />;
       default:
         return <Dashboard 
           stats={stats} 
@@ -338,35 +362,45 @@ function App() {
             backgroundColor: 'background.paper',
             borderBottom: '1px solid rgb(226 232 240)',
             backdropFilter: 'blur(8px)',
+            boxShadow: '0 2px 8px 0 rgb(0 0 0 / 0.04)',
+            zIndex: 1201
           }}
         >
-          <Toolbar>
+          <Toolbar sx={{ minHeight: 64, display: 'flex', alignItems: 'center', gap: 2 }}>
             <IconButton
               color="inherit"
               aria-label="open drawer"
               edge="start"
               onClick={handleDrawerToggle}
-              sx={{ 
-                mr: 2, 
+              sx={{
+                mr: 2,
                 display: { sm: 'none' },
-                color: 'text.primary'
+                color: 'text.primary',
+                fontSize: 28
               }}
             >
               <MenuIcon />
             </IconButton>
+            <Avatar
+              src={adminInfo?.profileImageUrl || ''}
+              sx={{ width: 40, height: 40, mr: 2, bgcolor: 'primary.light', color: 'white', fontWeight: 700, fontSize: 20 }}
+              alt={adminInfo ? `${adminInfo.name} ${adminInfo.surname}` : 'A'}
+            >
+              {adminInfo?.name?.[0] || 'A'}
+            </Avatar>
             <Box sx={{ flexGrow: 1 }}>
-              <Typography variant="h6" noWrap component="div" sx={{ color: 'text.primary', fontWeight: 600 }}>
-                {admin.displayName}
+              <Typography variant="h6" noWrap component="div" sx={{ color: 'text.primary', fontWeight: 700, fontSize: 20 }}>
+                {adminInfo ? `${adminInfo.name} ${adminInfo.surname}` : admin?.displayName}
               </Typography>
-              <Typography variant="body2" sx={{ color: 'text.secondary', textTransform: 'capitalize' }}>
-                {admin.role} • Admin Portal
+              <Typography variant="body2" sx={{ color: 'text.secondary', textTransform: 'capitalize', fontWeight: 500 }}>
+                {admin?.role === 'admin' ? 'Yönetici' : 'Moderatör'} • Yönetim Paneli
               </Typography>
             </Box>
-            <Chip 
-              label="Online" 
-              color="success" 
-              size="small" 
-              sx={{ 
+            <Chip
+              label="Çevrimiçi"
+              color="success"
+              size="small"
+              sx={{
                 backgroundColor: 'success.light',
                 color: 'white',
                 fontWeight: 600
@@ -409,15 +443,16 @@ function App() {
           component="main"
           sx={{
             flexGrow: 1,
-            p: 4,
+            p: { xs: 2, sm: 4 },
             width: { sm: `calc(100% - ${drawerWidth}px)` },
             mt: 8,
             backgroundColor: 'background.default',
-            minHeight: '100vh'
+            minHeight: '100vh',
+            transition: 'background 0.2s',
           }}
         >
-          <Box sx={{ 
-            maxWidth: '1400px', 
+          <Box sx={{
+            maxWidth: '1400px',
             mx: 'auto',
             animation: 'fadeIn 0.3s ease-in-out',
             '@keyframes fadeIn': {
