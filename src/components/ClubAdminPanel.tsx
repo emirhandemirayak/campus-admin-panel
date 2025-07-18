@@ -54,6 +54,8 @@ import { ref, get } from 'firebase/database';
 import ClubManagementPanel from './ClubManagementPanel';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import { uploadFilesToStorage } from '../services/clubPostService';
+import ErrorBoundary from './ErrorBoundary';
 
 const roleOptions = [
   { value: 'Üye', label: 'Üye' },
@@ -127,15 +129,7 @@ const ClubAdminPanel: React.FC = () => {
   const [createClubError, setCreateClubError] = useState<string | null>(null);
 
   // Universities
-  const [universities, setUniversities] = useState<{
-    universityId: string;
-    name: string;
-    logo: string;
-    city: string;
-    type: string;
-    address: string;
-    website: string;
-  }[]>([]);
+  const [universities, setUniversities] = useState<any[]>([]);
   const [selectedUniversity, setSelectedUniversity] = useState<any>(null);
 
   // Handle media file selection
@@ -443,7 +437,11 @@ const ClubAdminPanel: React.FC = () => {
     setCreateClubLoading(true);
     setCreateClubError(null);
     try {
-      const logoUrl = newClubLogo ? newClubLogo.name : '';
+      let logoUrl = '';
+      if (newClubLogo) {
+        const urls = await uploadFilesToStorage([newClubLogo], `clubLogos`);
+        logoUrl = urls[0];
+      }
       const club: Club = {
         clubId: Date.now().toString(),
         name: newClubName,
@@ -496,122 +494,124 @@ const ClubAdminPanel: React.FC = () => {
   }, [club]);
 
   return (
-    <Box maxWidth={1100} mx="auto" p={{ xs: 1, sm: 3 }}>
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={3} flexWrap="wrap" gap={2}>
-        <Typography variant="h4" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <AddCircleOutlineIcon color="primary" fontSize="large" /> Kulüp Yönetimi
-        </Typography>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateClubDialogOpen(true)} sx={{ borderRadius: 2, fontWeight: 600, minWidth: 180 }} aria-label="Kulüp Oluştur">
-          Kulüp Oluştur
-        </Button>
-      </Box>
-      {/* Club selector */}
-      <Box mb={3} display="flex" alignItems="center" gap={2} flexWrap="wrap">
-        <Typography variant="h6">Kulüp Seç:</Typography>
-        <FormControl sx={{ minWidth: 220 }}>
-          <InputLabel>Kulüp</InputLabel>
-          <Select
-            value={selectedClubId || ''}
-            label="Kulüp"
-            onChange={e => setSelectedClubId(e.target.value)}
-            inputProps={{ 'aria-label': 'Kulüp Seç' }}
-          >
-            {clubs.map(club => (
-              <MenuItem key={club.clubId} value={club.clubId}>
-                <Box display="flex" alignItems="center" gap={1}>
-                  <Avatar src={club.logoUrl} alt={club.name} sx={{ width: 28, height: 28 }} />
-                  {club.name}
+    <ErrorBoundary>
+      <Box maxWidth={1100} mx="auto" p={{ xs: 1, sm: 3 }}>
+        <Box display="flex" alignItems="center" justifyContent="space-between" mb={3} flexWrap="wrap" gap={2}>
+          <Typography variant="h4" fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AddCircleOutlineIcon color="primary" fontSize="large" /> Kulüp Yönetimi
+          </Typography>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setCreateClubDialogOpen(true)} sx={{ borderRadius: 2, fontWeight: 600, minWidth: 180 }} aria-label="Kulüp Oluştur">
+            Kulüp Oluştur
+          </Button>
+        </Box>
+        {/* Club selector */}
+        <Box mb={3} display="flex" alignItems="center" gap={2} flexWrap="wrap">
+          <Typography variant="h6">Kulüp Seç:</Typography>
+          <FormControl sx={{ minWidth: 220 }}>
+            <InputLabel>Kulüp</InputLabel>
+            <Select
+              value={selectedClubId || ''}
+              label="Kulüp"
+              onChange={e => setSelectedClubId(e.target.value)}
+              inputProps={{ 'aria-label': 'Kulüp Seç' }}
+            >
+              {(clubs || []).map(club => (
+                <MenuItem key={club.clubId} value={club.clubId}>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <Avatar src={club.logoUrl} alt={club.name} sx={{ width: 28, height: 28 }} />
+                    {club.name}
+                  </Box>
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          {club && (
+            <Box display="flex" alignItems="center" gap={2} ml={4} sx={{ background: '#fafbfc', p: 2, borderRadius: 3, boxShadow: 1 }}>
+              <Avatar src={club.logoUrl} alt={club.name} sx={{ width: 48, height: 48, boxShadow: 2, border: '2px solid #eee' }} />
+              <Box minWidth={200}>
+                <Typography fontWeight={600}>{club.name}</Typography>
+                <Typography variant="body2" color="text.secondary">{club.bio}</Typography>
+                <Box display="flex" gap={1} mt={1} flexWrap="wrap">
+                  {(club?.badgeRoles || []).map((role, idx) => (
+                    <Chip key={idx} label={role} size="small" color="secondary" sx={{ fontWeight: 600 }} />
+                  ))}
                 </Box>
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        {club && (
-          <Box display="flex" alignItems="center" gap={2} ml={4} sx={{ background: '#fafbfc', p: 2, borderRadius: 3, boxShadow: 1 }}>
-            <Avatar src={club.logoUrl} alt={club.name} sx={{ width: 48, height: 48, boxShadow: 2, border: '2px solid #eee' }} />
-            <Box minWidth={200}>
-              <Typography fontWeight={600}>{club.name}</Typography>
-              <Typography variant="body2" color="text.secondary">{club.bio}</Typography>
-              <Box display="flex" gap={1} mt={1} flexWrap="wrap">
-                {club.badgeRoles.map((role, idx) => (
-                  <Chip key={idx} label={role} size="small" color="secondary" sx={{ fontWeight: 600 }} />
-                ))}
               </Box>
             </Box>
+          )}
+        </Box>
+        {/* Create Club Dialog */}
+        <Dialog open={createClubDialogOpen} onClose={() => setCreateClubDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}><AddCircleOutlineIcon color="primary" /> Yeni Kulüp Oluştur</DialogTitle>
+          <DialogContent>
+            <Box component="form" onSubmit={handleCreateClub} display="flex" flexDirection="column" gap={2} mt={1}>
+              <Autocomplete
+                options={universities}
+                getOptionLabel={option => option.name || ''}
+                value={selectedUniversity}
+                onChange={(_e, value) => setSelectedUniversity(value)}
+                renderInput={params => <TextField {...params} label="Üniversite" required inputProps={{ ...params.inputProps, 'aria-label': 'Üniversite' }} />}
+                renderOption={(props, option) => (
+                  <li {...props} key={option.universityId}>
+                    <Box display="flex" alignItems="center" gap={1}>
+                      <Avatar src={option.logo} alt={option.name} sx={{ width: 24, height: 24 }} />
+                      <Box>
+                        <Typography fontWeight={500}>{option.name}</Typography>
+                        <Typography variant="caption" color="text.secondary">{option.city} • {option.type}</Typography>
+                      </Box>
+                    </Box>
+                  </li>
+                )}
+                isOptionEqualToValue={(option, value) => option.universityId === value.universityId}
+              />
+              <TextField
+                label="Kulüp Adı"
+                value={newClubName}
+                onChange={e => setNewClubName(e.target.value)}
+                required
+                inputProps={{ 'aria-label': 'Kulüp Adı' }}
+              />
+              <TextField
+                label="Açıklama"
+                value={newClubBio}
+                onChange={e => setNewClubBio(e.target.value)}
+                multiline
+                minRows={2}
+                inputProps={{ 'aria-label': 'Açıklama' }}
+              />
+              <Button variant="outlined" component="label" sx={{ borderRadius: 2, alignSelf: 'flex-start', transition: 'background 0.2s', ':hover': { background: '#e3e7fa' } }} aria-label="Logo Yükle">
+                Logo Yükle
+                <input type="file" accept="image/*" hidden onChange={handleLogoChange} />
+              </Button>
+              {newClubLogoPreview && <Avatar src={newClubLogoPreview} alt="logo" sx={{ width: 64, height: 64, mx: 1, boxShadow: 2, border: '2px solid #eee' }} />}
+              <TextField
+                label="Rozet/Rol (virgülle ayır)"
+                value={newClubBadgeRoles}
+                onChange={e => setNewClubBadgeRoles(e.target.value)}
+                helperText="Örn: Başkan, Yönetici, Üye"
+                inputProps={{ 'aria-label': 'Rozet/Rol' }}
+              />
+              {createClubError && <Alert severity="error">{createClubError}</Alert>}
+              <DialogActions>
+                <Button onClick={() => setCreateClubDialogOpen(false)} color="inherit">İptal</Button>
+                <Button type="submit" variant="contained" disabled={createClubLoading} sx={{ borderRadius: 2, fontWeight: 600, minWidth: 120 }}>
+                  {createClubLoading ? 'Oluşturuluyor...' : 'Oluştur'}
+                </Button>
+              </DialogActions>
+            </Box>
+          </DialogContent>
+        </Dialog>
+        {/* Club management UI (show only if club selected) */}
+        {club ? (
+          <ClubManagementPanel club={club} />
+        ) : (
+          <Box display="flex" flexDirection="column" alignItems="center" color="text.secondary" py={6}>
+            <InfoOutlinedIcon fontSize="large" sx={{ mb: 1 }} />
+            <Typography mt={4}>Lütfen bir kulüp seçin veya oluşturun.</Typography>
           </Box>
         )}
       </Box>
-      {/* Create Club Dialog */}
-      <Dialog open={createClubDialogOpen} onClose={() => setCreateClubDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}><AddCircleOutlineIcon color="primary" /> Yeni Kulüp Oluştur</DialogTitle>
-        <DialogContent>
-          <Box component="form" onSubmit={handleCreateClub} display="flex" flexDirection="column" gap={2} mt={1}>
-            <Autocomplete
-              options={universities}
-              getOptionLabel={option => option.name || ''}
-              value={selectedUniversity}
-              onChange={(_e, value) => setSelectedUniversity(value)}
-              renderInput={params => <TextField {...params} label="Üniversite" required inputProps={{ ...params.inputProps, 'aria-label': 'Üniversite' }} />}
-              renderOption={(props, option) => (
-                <li {...props} key={option.universityId}>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <Avatar src={option.logo} alt={option.name} sx={{ width: 24, height: 24 }} />
-                    <Box>
-                      <Typography fontWeight={500}>{option.name}</Typography>
-                      <Typography variant="caption" color="text.secondary">{option.city} • {option.type}</Typography>
-                    </Box>
-                  </Box>
-                </li>
-              )}
-              isOptionEqualToValue={(option, value) => option.universityId === value.universityId}
-            />
-            <TextField
-              label="Kulüp Adı"
-              value={newClubName}
-              onChange={e => setNewClubName(e.target.value)}
-              required
-              inputProps={{ 'aria-label': 'Kulüp Adı' }}
-            />
-            <TextField
-              label="Açıklama"
-              value={newClubBio}
-              onChange={e => setNewClubBio(e.target.value)}
-              multiline
-              minRows={2}
-              inputProps={{ 'aria-label': 'Açıklama' }}
-            />
-            <Button variant="outlined" component="label" sx={{ borderRadius: 2, alignSelf: 'flex-start', transition: 'background 0.2s', ':hover': { background: '#e3e7fa' } }} aria-label="Logo Yükle">
-              Logo Yükle
-              <input type="file" accept="image/*" hidden onChange={handleLogoChange} />
-            </Button>
-            {newClubLogoPreview && <Avatar src={newClubLogoPreview} alt="logo" sx={{ width: 64, height: 64, mx: 1, boxShadow: 2, border: '2px solid #eee' }} />}
-            <TextField
-              label="Rozet/Rol (virgülle ayır)"
-              value={newClubBadgeRoles}
-              onChange={e => setNewClubBadgeRoles(e.target.value)}
-              helperText="Örn: Başkan, Yönetici, Üye"
-              inputProps={{ 'aria-label': 'Rozet/Rol' }}
-            />
-            {createClubError && <Alert severity="error">{createClubError}</Alert>}
-            <DialogActions>
-              <Button onClick={() => setCreateClubDialogOpen(false)} color="inherit">İptal</Button>
-              <Button type="submit" variant="contained" disabled={createClubLoading} sx={{ borderRadius: 2, fontWeight: 600, minWidth: 120 }}>
-                {createClubLoading ? 'Oluşturuluyor...' : 'Oluştur'}
-              </Button>
-            </DialogActions>
-          </Box>
-        </DialogContent>
-      </Dialog>
-      {/* Club management UI (show only if club selected) */}
-      {club ? (
-        <ClubManagementPanel club={club} />
-      ) : (
-        <Box display="flex" flexDirection="column" alignItems="center" color="text.secondary" py={6}>
-          <InfoOutlinedIcon fontSize="large" sx={{ mb: 1 }} />
-          <Typography mt={4}>Lütfen bir kulüp seçin veya oluşturun.</Typography>
-        </Box>
-      )}
-    </Box>
+    </ErrorBoundary>
   );
 };
 
