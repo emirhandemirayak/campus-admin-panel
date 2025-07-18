@@ -1,5 +1,5 @@
 import { db } from '../firebase/config';
-import { ref, get, set } from 'firebase/database';
+import { ref, get, set, remove } from 'firebase/database';
 import { storage } from '../firebase/config';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { ClubPost } from '../types';
@@ -32,6 +32,11 @@ export class ClubPostService {
   static async updatePost(clubId: string, postId: string, updatedPost: ClubPost): Promise<void> {
     const postRef = ref(db, `clubPosts/${clubId}/${postId}`);
     await set(postRef, updatedPost);
+  }
+
+  static async deletePost(clubId: string, postId: string): Promise<void> {
+    const postRef = ref(db, `clubPosts/${clubId}/${postId}`);
+    await remove(postRef);
   }
 }
 

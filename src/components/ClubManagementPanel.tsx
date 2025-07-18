@@ -25,6 +25,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import CloseIcon from '@mui/icons-material/Close';
 import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
+import Autocomplete from '@mui/material/Autocomplete';
+import { UserManagementService, type UserInfo } from '../services/userManagementService';
 
 const roleOptions = [
   { value: 'Kulüp Başkanı', label: 'Kulüp Başkanı' },
@@ -67,7 +69,8 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
   const [members, setMembers] = useState<ClubMember[]>([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [membersError, setMembersError] = useState<string | null>(null);
-  const [addMemberName, setAddMemberName] = useState('');
+  const [addMemberUser, setAddMemberUser] = useState<UserInfo | null>(null);
+  const [allUsers, setAllUsers] = useState<UserInfo[]>([]);
   const [addMemberRole, setAddMemberRole] = useState('Üye');
   const [addMemberStatus, setAddMemberStatus] = useState<'idle' | 'success' | 'error' | 'loading'>('idle');
   const [addMemberMessage, setAddMemberMessage] = useState('');
@@ -126,6 +129,20 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
     'Seminer', 'Sosyal', 'Yarışma', 'Atölye', 'Diğer', '+ Yeni Tür Ekle'
   ];
 
+  // Add filter states
+  const [userFilterUniversity, setUserFilterUniversity] = useState('');
+  const [userFilterMajor, setUserFilterMajor] = useState('');
+  const [userFilterGender, setUserFilterGender] = useState('');
+
+  // Compute filtered users
+  const filteredUsers = allUsers.filter(user => {
+    return (
+      (!userFilterUniversity || (user.university && user.university === userFilterUniversity)) &&
+      (!userFilterMajor || (user.major && user.major === userFilterMajor)) &&
+      (!userFilterGender || (user.gender && user.gender === userFilterGender))
+    );
+  });
+
   // Move libraries array outside the component to avoid re-creating it on every render
   const GOOGLE_MAPS_LIBRARIES = ['places'];
   // Google Maps API loader
@@ -178,6 +195,11 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
     }
   };
 
+  // Fetch all users for member add dropdown
+  useEffect(() => {
+    UserManagementService.getAllUsers().then(setAllUsers).catch(() => setAllUsers([]));
+  }, []);
+
   // Fetch data when club changes
   useEffect(() => {
     fetchPosts();
@@ -224,7 +246,11 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
             if (!postContent.trim()) return;
             try {
               setPostsError(null);
-              const mediaUrls = postMediaFiles.map(f => f.name);
+              // Upload media files and get URLs
+              let mediaUrls: string[] = [];
+              if (postMediaFiles.length > 0) {
+                mediaUrls = await uploadFilesToStorage(postMediaFiles, `clubPosts/${CLUB_ID}`);
+              }
               const post: ClubPost = {
                 postId: Date.now().toString(),
                 clubId: CLUB_ID,
@@ -235,6 +261,10 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
                 timestamp: new Date().toISOString(),
               };
               await ClubPostService.createPost(post);
+              // Save postId under the related club
+              const clubData = await ClubService.getClubById(CLUB_ID);
+              const updatedPosts = clubData && clubData.posts ? [...clubData.posts, post.postId] : [post.postId];
+              await ClubService.updateClub(CLUB_ID, { posts: updatedPosts });
               setPostContent('');
               setPostLink('');
               setPostMediaFiles([]);
@@ -252,7 +282,8 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
               multiline
               minRows={3}
               required
-              inputProps={{ maxLength: 500, 'aria-label': 'Gönderi içeriği' }}
+              inputProps={{ maxLength: 2000, 'aria-label': 'Gönderi içeriği' }}
+              helperText={`${postContent.length}/2000 karakter`}
               sx={{ mb: 1, fontSize: { xs: 14, sm: 16 } }}
             />
             <TextField
@@ -324,24 +355,48 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
                     ))}
                   </Box>
                   <Typography variant="caption" color="text.secondary">{new Date(post.timestamp).toLocaleString('tr-TR')}</Typography>
-                  <Button
-                    startIcon={<EditIcon />}
-                    variant="outlined"
-                    color="primary"
-                    size="small"
-                    sx={{ mt: 1, borderRadius: 2, fontWeight: 600, minWidth: 100 }}
-                    onClick={() => {
-                      setEditingPost(post);
-                      setEditPostContent(post.textContent);
-                      setEditPostLink(post.link || '');
-                      setEditPostMediaFiles([]);
-                      setEditPostMediaPreviews(post.mediaUrls || []);
-                      setEditPostDialogOpen(true);
-                    }}
-                    aria-label="Gönderiyi Düzenle"
-                  >
-                    Düzenle
-                  </Button>
+                  <Box display="flex" gap={1} mt={1}>
+                    <Button
+                      startIcon={<EditIcon />}
+                      variant="outlined"
+                      color="primary"
+                      size="small"
+                      sx={{ borderRadius: 2, fontWeight: 600, minWidth: 100 }}
+                      onClick={() => {
+                        setEditingPost(post);
+                        setEditPostContent(post.textContent);
+                        setEditPostLink(post.link || '');
+                        setEditPostMediaFiles([]);
+                        setEditPostMediaPreviews(post.mediaUrls || []);
+                        setEditPostDialogOpen(true);
+                      }}
+                      aria-label="Gönderiyi Düzenle"
+                    >
+                      Düzenle
+                    </Button>
+                    <Button
+                      startIcon={<CloseIcon />}
+                      variant="outlined"
+                      color="error"
+                      size="small"
+                      sx={{ borderRadius: 2, fontWeight: 600, minWidth: 100 }}
+                      onClick={async () => {
+                        if (window.confirm('Gönderiyi silmek istediğinize emin misiniz?')) {
+                          await ClubPostService.deletePost(CLUB_ID, post.postId);
+                          // Remove postId from club's posts array
+                          const clubData = await ClubService.getClubById(CLUB_ID);
+                          if (clubData && clubData.posts) {
+                            const updatedPosts = clubData.posts.filter(id => id !== post.postId);
+                            await ClubService.updateClub(CLUB_ID, { posts: updatedPosts });
+                          }
+                          fetchPosts();
+                        }
+                      }}
+                      aria-label="Gönderiyi Sil"
+                    >
+                      Sil
+                    </Button>
+                  </Box>
                 </CardContent>
               </Card>
             ))}
@@ -360,38 +415,105 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
           <Typography variant="h6" mb={2} fontWeight={700} sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: { xs: 18, sm: 22 } }}>
             <AddCircleOutlineIcon color="primary" /> Üye Ekle
           </Typography>
+          {/* User Filters */}
+          <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={2} mb={2}>
+            <FormControl fullWidth sx={{ minWidth: 160 }}>
+              <InputLabel>Üniversite</InputLabel>
+              <Select
+                value={userFilterUniversity}
+                label="Üniversite"
+                onChange={e => setUserFilterUniversity(e.target.value)}
+              >
+                <MenuItem value="">Tümü</MenuItem>
+                {[...new Set(allUsers.map(u => u.university).filter(Boolean))].map(uni => (
+                  <MenuItem key={uni} value={uni}>{uni}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth sx={{ minWidth: 160 }}>
+              <InputLabel>Bölüm</InputLabel>
+              <Select
+                value={userFilterMajor}
+                label="Bölüm"
+                onChange={e => setUserFilterMajor(e.target.value)}
+              >
+                <MenuItem value="">Tümü</MenuItem>
+                {[...new Set(allUsers.map(u => u.major).filter(Boolean))].map(major => (
+                  <MenuItem key={major} value={major}>{major}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth sx={{ minWidth: 160 }}>
+              <InputLabel>Cinsiyet</InputLabel>
+              <Select
+                value={userFilterGender}
+                label="Cinsiyet"
+                onChange={e => setUserFilterGender(e.target.value)}
+              >
+                <MenuItem value="">Tümü</MenuItem>
+                {[...new Set(allUsers.map(u => u.gender).filter(Boolean))].map(gender => (
+                  <MenuItem key={gender} value={gender}>{gender}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
           <Box component="form" onSubmit={async e => {
             e.preventDefault();
-            if (!addMemberName.trim()) return;
+            if (!addMemberUser) return;
             setAddMemberStatus('loading');
             setAddMemberMessage('');
             try {
               const newMember: ClubMember = {
-                userId: Date.now().toString(), // Automatically assign unique ID
-                name: addMemberName,
+                userId: addMemberUser.uid,
+                name: `${addMemberUser.name || ''} ${addMemberUser.surname || ''}`.trim() || addMemberUser.email || 'Kullanıcı',
                 role: addMemberRole,
                 status: 'active',
               };
               await ClubService.addMember(CLUB_ID, newMember);
               setAddMemberStatus('success');
               setAddMemberMessage('Üye başarıyla eklendi.');
-              setAddMemberName('');
+              setAddMemberUser(null);
               setAddMemberRole('Üye');
               fetchMembers();
             } catch (err) {
               setAddMemberStatus('error');
               setAddMemberMessage('Üye eklenemedi.');
             }
-          }} mb={3} display="flex" gap={2} alignItems="center" sx={{ background: '#fafbfc', p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: 1, mb: 4, flexWrap: 'wrap', maxWidth: 600 }}>
-            <TextField
-              label="Kullanıcı Adı"
-              value={addMemberName}
-              onChange={e => setAddMemberName(e.target.value)}
-              required
-              sx={{ minWidth: 200, fontSize: { xs: 14, sm: 16 } }}
-              inputProps={{ 'aria-label': 'Kullanıcı Adı' }}
+          }} mb={3} display="flex" flexDirection={{ xs: 'column', sm: 'row' }} gap={2} alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ background: '#fafbfc', p: { xs: 2, sm: 3 }, borderRadius: 3, boxShadow: 1, mb: 4, flexWrap: 'wrap', maxWidth: 600 }}>
+            <Autocomplete
+              options={filteredUsers}
+              getOptionLabel={(option: UserInfo) => `${option.name || ''} ${option.surname || ''}`.trim() || option.email || option.uid}
+              filterOptions={(options: UserInfo[], { inputValue }: { inputValue: string }) =>
+                options.filter((option: UserInfo) =>
+                  ((option.name && option.name.toLowerCase().includes(inputValue.toLowerCase())) ||
+                  (option.surname && option.surname.toLowerCase().includes(inputValue.toLowerCase())) ||
+                  ((option.name && option.surname) && (`${option.name} ${option.surname}`.toLowerCase().includes(inputValue.toLowerCase()))) ||
+                  (option.email && option.email.toLowerCase().includes(inputValue.toLowerCase())) ||
+                  (option.university && option.university.toLowerCase().includes(inputValue.toLowerCase())))
+                )
+              }
+              value={addMemberUser}
+              onChange={(_event: React.SyntheticEvent, value: UserInfo | null) => setAddMemberUser(value)}
+              renderInput={(params) => (
+                <TextField {...params} label="Kullanıcı Seç" required fullWidth sx={{ fontSize: { xs: 14, sm: 16 } }} inputProps={{ ...params.inputProps, 'aria-label': 'Kullanıcı Seç' }} />
+              )}
+              isOptionEqualToValue={(option: UserInfo, value: UserInfo) => option.uid === value.uid}
+              sx={{ minWidth: 200, flex: 1 }}
+              renderOption={(props, option: UserInfo) => {
+                return (
+                  <li {...props} key={option.uid} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Avatar src={option.profileImageUrl} alt={`${option.name || ''} ${option.surname || ''}`.trim() || option.email || option.uid} sx={{ width: 32, height: 32, mr: 1 }} />
+                    <Box>
+                      <Typography fontWeight={600}>{`${option.name || ''} ${option.surname || ''}`.trim() || option.email || option.uid}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {option.university || 'Bilinmiyor'}
+                      </Typography>
+                    </Box>
+                  </li>
+                );
+              }}
             />
-            <FormControl sx={{ minWidth: 160 }}>
+            <FormControl fullWidth sx={{ minWidth: 160 }}>
               <InputLabel>Rol</InputLabel>
               <Select
                 value={addMemberRole}
@@ -404,7 +526,7 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
                 ))}
               </Select>
             </FormControl>
-            <Button type="submit" variant="contained" disabled={addMemberStatus === 'loading'} sx={{ borderRadius: 2, fontWeight: 600, px: 4, minWidth: 120, fontSize: { xs: 15, sm: 17 } }} aria-label="Üye Ekle">
+            <Button type="submit" variant="contained" disabled={addMemberStatus === 'loading'} sx={{ borderRadius: 2, fontWeight: 600, px: 4, minWidth: 120, fontSize: { xs: 15, sm: 17 }, mt: { xs: 2, sm: 0 } }} aria-label="Üye Ekle">
               {addMemberStatus === 'loading' ? <CircularProgress size={20} /> : 'Ekle'}
             </Button>
           </Box>
@@ -422,111 +544,113 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
           {membersError && <Alert severity="error" sx={{ mb: 2 }}>{membersError}</Alert>}
           <Divider sx={{ my: 2 }} />
           <Typography variant="h6" mb={2} fontWeight={700} sx={{ fontSize: { xs: 18, sm: 22 } }}>Üyeler</Typography>
-          <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: 2, width: '100%', overflowX: 'auto' }}>
-            <Table aria-label="Üyeler Tablosu">
-              <TableHead>
-                <TableRow sx={{ background: '#f5f6fa' }}>
-                  <TableCell sx={{ fontWeight: 700 }}>İsim</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Rol</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Durum</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>İşlemler</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
+          <Box sx={{ width: '100%' }}>
+            {membersLoading ? (
+              <Box display="flex" justifyContent="center" my={2}><CircularProgress size={28} /></Box>
+            ) : membersError ? (
+              <Alert severity="error" sx={{ mb: 2 }}>{membersError}</Alert>
+            ) : members.length === 0 ? (
+              <Box display="flex" flexDirection="column" alignItems="center" color="text.secondary" py={4}>
+                <InfoOutlinedIcon fontSize="large" sx={{ mb: 1 }} />
+                <Typography sx={{ fontSize: { xs: 15, sm: 17 } }}>Henüz üye yok.</Typography>
+              </Box>
+            ) : (
+              <Grid container columns={12} columnSpacing={2} rowSpacing={2}>
                 {members.map(member => (
-                  <TableRow key={member.userId} hover sx={{ transition: 'background 0.2s' }}>
-                    <TableCell>{member.name}</TableCell>
-                    <TableCell>
-                      <FormControl fullWidth size="small">
-                        <Select
-                          value={member.role}
-                          onChange={e => {
-                            ClubService.updateMemberRole(CLUB_ID, member.userId, e.target.value).then(fetchMembers);
+                  <Grid key={member.userId} sx={{ gridColumn: { xs: 'span 12', sm: 'span 6', md: 'span 4' } }}>
+                    <Card sx={{ display: 'flex', alignItems: 'center', p: 2, borderRadius: 3, boxShadow: 2, gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+                      <Avatar src={allUsers.find(u => u.uid === member.userId)?.profileImageUrl} alt={member.name} sx={{ width: 56, height: 56, mr: { sm: 2, xs: 0 }, mb: { xs: 1, sm: 0 } }} />
+                      <Box flex={1} minWidth={0}>
+                        <Typography fontWeight={700} sx={{ fontSize: { xs: 16, sm: 18 }, wordBreak: 'break-word' }}>{member.name}</Typography>
+                        <Box display="flex" alignItems="center" gap={1} mt={0.5} flexWrap="wrap">
+                          <Chip
+                            label={member.role}
+                            color={
+                              member.role === 'Kulüp Başkanı' ? 'primary' :
+                              member.role === 'Başkan Yardımcısı' ? 'secondary' :
+                              member.role === 'Genel Sekreter' ? 'success' :
+                              member.role === 'Sayman / Mali Sorumlu' ? 'warning' :
+                              member.role === 'Etkinlik Sorumlusu' ? 'info' :
+                              member.role === 'İletişim ve Sosyal Medya Sorumlusu' ? 'info' :
+                              member.role === 'Üye İlişkileri Sorumlusu' ? 'info' :
+                              member.role === 'Proje Geliştirme Sorumlusu' ? 'info' :
+                              member.role === 'Eğitim/Atölye Sorumlusu' ? 'info' :
+                              member.role === 'Tasarım Sorumlusu' ? 'info' :
+                              member.role === 'Medya ve Fotoğraf Sorumlusu' ? 'info' :
+                              member.role === 'Dış İlişkiler / Kurumsal İlişkiler Sorumlusu' ? 'info' :
+                              member.role === 'Gönüllü Koordinatörü' ? 'info' :
+                              member.role === 'Üye' ? 'default' :
+                              'default'
+                            }
+                            size="small"
+                            sx={{ fontWeight: 600 }}
+                            aria-label={`Rol: ${member.role}`}
+                          />
+                          <Chip
+                            label={member.status === 'active' ? 'Aktif' : member.status === 'kicked' ? 'Atıldı' : 'Şikayetli'}
+                            color={member.status === 'active' ? 'success' : member.status === 'kicked' ? 'error' : 'warning'}
+                            size="small"
+                            sx={{ fontWeight: 600 }}
+                            aria-label={`Durum: ${member.status}`}
+                          />
+                        </Box>
+                      </Box>
+                      <Box display="flex" flexDirection={{ xs: 'row', sm: 'column' }} gap={1} ml={{ sm: 2, xs: 0 }} mt={{ xs: 2, sm: 0 }}>
+                        <FormControl fullWidth size="small" sx={{ minWidth: 120 }}>
+                          <Select
+                            value={member.role}
+                            onChange={e => {
+                              ClubService.updateMemberRole(CLUB_ID, member.userId, e.target.value).then(fetchMembers);
+                            }}
+                            disabled={member.status !== 'active'}
+                            inputProps={{ 'aria-label': 'Rol Değiştir' }}
+                          >
+                            {roleOptions.map(opt => (
+                              <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                            ))}
+                            {/* Allow custom roles */}
+                            {member.role && !roleOptions.some(opt => opt.value === member.role) && (
+                              <MenuItem value={member.role}>{member.role}</MenuItem>
+                            )}
+                          </Select>
+                        </FormControl>
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          size="small"
+                          onClick={() => {
+                            if (window.confirm('Üyeyi atmak istediğinize emin misiniz?')) {
+                              ClubService.kickMember(CLUB_ID, member.userId).then(fetchMembers);
+                            }
                           }}
                           disabled={member.status !== 'active'}
-                          inputProps={{ 'aria-label': 'Rol Değiştir' }}
+                          sx={{ borderRadius: 2, minWidth: 60, fontWeight: 600, ':focus': { outline: '2px solid #d32f2f' } }}
+                          aria-label="Üyeyi At"
                         >
-                          {roleOptions.map(opt => (
-                            <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                          ))}
-                          {/* Allow custom roles */}
-                          {member.role && !roleOptions.some(opt => opt.value === member.role) && (
-                            <MenuItem value={member.role}>{member.role}</MenuItem>
-                          )}
-                        </Select>
-                      </FormControl>
-                      <Chip
-                        label={member.role}
-                        color={
-                          member.role === 'Kulüp Başkanı' ? 'primary' :
-                          member.role === 'Başkan Yardımcısı' ? 'secondary' :
-                          member.role === 'Genel Sekreter' ? 'success' :
-                          member.role === 'Sayman / Mali Sorumlu' ? 'warning' :
-                          member.role === 'Etkinlik Sorumlusu' ? 'info' :
-                          member.role === 'İletişim ve Sosyal Medya Sorumlusu' ? 'info' :
-                          member.role === 'Üye İlişkileri Sorumlusu' ? 'info' :
-                          member.role === 'Proje Geliştirme Sorumlusu' ? 'info' :
-                          member.role === 'Eğitim/Atölye Sorumlusu' ? 'info' :
-                          member.role === 'Tasarım Sorumlusu' ? 'info' :
-                          member.role === 'Medya ve Fotoğraf Sorumlusu' ? 'info' :
-                          member.role === 'Dış İlişkiler / Kurumsal İlişkiler Sorumlusu' ? 'info' :
-                          member.role === 'Gönüllü Koordinatörü' ? 'info' :
-                          member.role === 'Üye' ? 'default' :
-                          'default'
-                        }
-                        size="small"
-                        sx={{ ml: 1, fontWeight: 600 }}
-                        aria-label={`Rol: ${member.role}`}
-                      />
-                    </TableCell>
-                    <TableCell>{member.status}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outlined"
-                        color="error"
-                        size="small"
-                        onClick={() => {
-                          if (window.confirm('Üyeyi atmak istediğinize emin misiniz?')) {
-                            ClubService.kickMember(CLUB_ID, member.userId).then(fetchMembers);
-                          }
-                        }}
-                        disabled={member.status !== 'active'}
-                        sx={{ mr: 1, borderRadius: 2, minWidth: 60, fontWeight: 600, ':focus': { outline: '2px solid #d32f2f' } }}
-                        aria-label="Üyeyi At"
-                      >
-                        At
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        color="warning"
-                        size="small"
-                        onClick={() => {
-                          if (window.confirm('Üyeyi şikayet etmek istediğinize emin misiniz?')) {
-                            ClubService.reportMember(CLUB_ID, member.userId).then(fetchMembers);
-                          }
-                        }}
-                        disabled={member.status !== 'active'}
-                        sx={{ borderRadius: 2, minWidth: 100, fontWeight: 600, ':focus': { outline: '2px solid #ed6c02' } }}
-                        aria-label="Üyeyi Şikayet Et"
-                      >
-                        Şikayet Et
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {members.length === 0 && !membersLoading && (
-                  <TableRow>
-                    <TableCell colSpan={4} align="center" color="text.secondary">
-                      <Box display="flex" flexDirection="column" alignItems="center" py={3}>
-                        <InfoOutlinedIcon fontSize="large" sx={{ mb: 1 }} />
-                        <Typography sx={{ fontSize: { xs: 15, sm: 17 } }}>Henüz üye yok.</Typography>
+                          At
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          color="warning"
+                          size="small"
+                          onClick={() => {
+                            if (window.confirm('Üyeyi şikayet etmek istediğinize emin misiniz?')) {
+                              ClubService.reportMember(CLUB_ID, member.userId).then(fetchMembers);
+                            }
+                          }}
+                          disabled={member.status !== 'active'}
+                          sx={{ borderRadius: 2, minWidth: 100, fontWeight: 600, ':focus': { outline: '2px solid #ed6c02' } }}
+                          aria-label="Üyeyi Şikayet Et"
+                        >
+                          Şikayet Et
+                        </Button>
                       </Box>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+          </Box>
         </Box>
       )}
       {/* Events Tab */}
@@ -669,6 +793,9 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
                 onChange={e => setEventDescription(e.target.value)}
                 sx={{ minWidth: 200, fontSize: { xs: 14, sm: 16 } }}
                 inputProps={{ 'aria-label': 'Açıklama' }}
+                fullWidth
+                multiline
+                minRows={4}
               />
               <Button
                 variant="outlined"
@@ -799,38 +926,38 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
                   {/* @ts-ignore */}
                   <Grid container spacing={1} alignItems="center">
                     {/* @ts-ignore */}
-                    <Grid item xs={12} sm={8}>
+                    <Grid xs={12} sm={8}>
                       <Typography variant="h6" fontWeight={600}>{event.title}</Typography>
                     </Grid>
                     {/* @ts-ignore */}
-                    <Grid item xs={12} sm={4} sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
+                    <Grid xs={12} sm={4} sx={{ textAlign: { xs: 'left', sm: 'right' } }}>
                       <Tooltip title="Etkinlik Türü">
                         <Chip label={event.type} color="primary" sx={{ fontWeight: 600 }} />
                       </Tooltip>
                     </Grid>
                     {/* @ts-ignore */}
-                    <Grid item xs={12} sm={6}>
+                    <Grid xs={12} sm={6}>
                       <Box display="flex" alignItems="center" gap={1}>
                         <EventIcon fontSize="small" />
                         <Typography variant="body2">{event.date} {event.time}</Typography>
                       </Box>
                     </Grid>
                     {/* @ts-ignore */}
-                    <Grid item xs={12} sm={6}>
+                    <Grid xs={12} sm={6}>
                       <Box display="flex" alignItems="center" gap={1}>
                         <PlaceIcon fontSize="small" />
                         <Typography variant="body2">{event.location}</Typography>
                       </Box>
                     </Grid>
                     {/* @ts-ignore */}
-                    <Grid item xs={12} sm={6}>
+                    <Grid xs={12} sm={6}>
                       <Box display="flex" alignItems="center" gap={1}>
                         <AttachMoneyIcon fontSize="small" />
                         <Typography variant="body2">{event.price ? `${event.price}₺` : 'Ücretsiz'}</Typography>
                       </Box>
                     </Grid>
                     {/* @ts-ignore */}
-                    <Grid item xs={12} sm={6}>
+                    <Grid xs={12} sm={6}>
                       <Box display="flex" alignItems="center" gap={1}>
                         <PeopleIcon fontSize="small" />
                         <Typography variant="body2">{event.quota || 'Belirtilmedi'}</Typography>
@@ -839,7 +966,7 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
                     {/* @ts-ignore */}
                     {event.link && (
   // @ts-ignore
-  <Grid item xs={12}>
+  <Grid xs={12}>
     <Box display="flex" alignItems="center" gap={1}>
       <LinkIcon fontSize="small" color="primary" />
       <a href={event.link} target="_blank" rel="noopener noreferrer" style={{ color: '#6366f1', textDecoration: 'underline', wordBreak: 'break-all', fontSize: '15px' }}>{event.link}</a>
@@ -847,7 +974,7 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
   </Grid>
 )}
                   </Grid>
-                  <Typography variant="body2" color="text.secondary" mt={1}>{event.description}</Typography>
+                  <Typography variant="body2" color="text.secondary" mt={1} sx={{ whiteSpace: 'pre-line' }}>{event.description}</Typography>
                   <Box display="flex" gap={1} flexWrap="wrap" mt={1}>
                     {event.mediaUrls && event.mediaUrls.slice(1).map((url: string, idx: number) => (
                       <Box key={idx} sx={{ border: '1px solid #eee', borderRadius: 2, overflow: 'hidden', boxShadow: 1, ':hover': { boxShadow: 3 }, transition: 'box-shadow 0.2s' }}>
@@ -1019,17 +1146,52 @@ const ClubManagementPanel: React.FC<{ club: Club; onBack?: () => void }> = ({ cl
             required
             sx={{ mb: 2, minWidth: 120 }}
           />
-          <TextField
-            label="Konum"
+          <PlacesAutocomplete
             value={editEventLocation}
-            onChange={e => setEditEventLocation(e.target.value)}
-            sx={{ mb: 2, minWidth: 200 }}
-          />
+            onChange={setEditEventLocation}
+            onSelect={(address: string) => {
+              setEditEventLocation(address);
+              setEditEventFormattedAddress(address);
+            }}
+            searchOptions={{ componentRestrictions: { country: 'tr' } }}
+          >
+            {({ getInputProps, suggestions, getSuggestionItemProps, loading }: {
+              getInputProps: (options?: any) => any;
+              suggestions: Array<any>;
+              getSuggestionItemProps: (suggestion: any) => any;
+              loading: boolean;
+            }) => (
+              <Box sx={{ mb: 2, minWidth: 200, position: 'relative' }}>
+                <TextField
+                  {...getInputProps({ placeholder: 'Konum ara...' })}
+                  label="Konum"
+                  fullWidth
+                  inputProps={{ 'aria-label': 'Konum' }}
+                  sx={{ fontSize: { xs: 14, sm: 16 } }}
+                />
+                <Box sx={{ position: 'absolute', zIndex: 10, background: 'white', width: '100%', borderRadius: 2, boxShadow: 2 }}>
+                  {loading && <div>Yükleniyor...</div>}
+                  {suggestions.map((suggestion: any) => (
+                    <Box
+                      {...getSuggestionItemProps(suggestion)}
+                      key={suggestion.placeId}
+                      sx={{ p: 1, cursor: 'pointer', background: suggestion.active ? '#f0f0f0' : 'white', borderBottom: '1px solid #eee' }}
+                    >
+                      {suggestion.description}
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+          </PlacesAutocomplete>
           <TextField
             label="Açıklama"
             value={editEventDescription}
             onChange={e => setEditEventDescription(e.target.value)}
             sx={{ mb: 2, minWidth: 200 }}
+            fullWidth
+            multiline
+            minRows={4}
           />
           <Button
             variant="outlined"

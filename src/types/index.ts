@@ -91,6 +91,7 @@ export interface Club {
   memberList: ClubMember[]; // Üye listesi
   events: string[]; // Etkinlik ID listesi
   badgeRoles: string[]; // Rozet/rol listesi
+  posts?: string[]; // Gönderi ID listesi (opsiyonel)
 }
 
 // Etkinlik tipi
